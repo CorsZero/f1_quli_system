@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Qualifying - Live Timing</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>FORMULA 1</h1>
+                <span class="session-name">QUALIFYING</span>
+            </div>
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                <span>LIVE</span>
+            </div>
+        </header>
+
+        <!-- Race Control Panel -->
+        <div class="race-control">
+            <h2>RACE CONTROL</h2>
+            <div class="control-panel">
+                <div class="control-group">
+                    <label>Team</label>
+                    <select id="teamSelect">
+                        <option value="">Select Team</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Driver</label>
+                    <select id="driverSelect" disabled>
+                        <option value="">Select Driver</option>
+                    </select>
+                </div>
+                <div class="control-buttons">
+                    <button id="startBtn" class="btn btn-start" disabled>START SESSION</button>
+                    <button id="stopBtn" class="btn btn-stop" disabled>STOP SESSION</button>
+                </div>
+                <div id="currentSession" class="current-session"></div>
+            </div>
+        </div>
+
+        <!-- Demo Controls (for testing without hardware) -->
+        <div class="demo-control">
+            <h3>DEMO MODE (Testing)</h3>
+            <div class="demo-buttons">
+                <button onclick="triggerSensor('S1')" class="btn-demo">Trigger Start/Finish</button>
+                <button onclick="triggerSensor('S2')" class="btn-demo">Trigger Sector 1</button>
+                <button onclick="triggerSensor('S3')" class="btn-demo">Trigger Sector 2</button>
+            </div>
+        </div>
+
+        <!-- Current Lap Display -->
+        <div class="current-lap">
+            <h2>CURRENT LAP</h2>
+            <div id="liveTimer" class="live-timer" style="display: none;">
+                <div class="live-timer-label">LIVE LAP TIME</div>
+                <div class="live-timer-display" id="liveTimerDisplay">0:00.000</div>
+            </div>
+            <div id="currentLapDisplay" class="lap-display">
+                <div class="no-session">No active session</div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="leaderboard-section">
+            <h2>LEADERBOARD</h2>
+            <div class="leaderboard-header">
+                <div class="pos">POS</div>
+                <div class="driver-info">DRIVER</div>
+                <div class="sector">S1</div>
+                <div class="sector">S2</div>
+                <div class="sector">S3</div>
+                <div class="time">TIME</div>
+                <div class="laps">LAPS</div>
+            </div>
+            <div id="leaderboard" class="leaderboard-body">
+                <div class="no-data">No lap times recorded yet</div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-color purple"></span>
+                <span>Overall Best</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color green"></span>
+                <span>Personal Best</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color yellow"></span>
+                <span>Slower</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
