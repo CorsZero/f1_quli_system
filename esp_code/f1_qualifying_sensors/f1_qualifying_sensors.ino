@@ -23,11 +23,11 @@
 #include <WebSocketsClient.h>
 
 // ===== WiFi Configuration =====
-const char* WIFI_SSID = "YOUR_WIFI_SSID";        // Replace with your WiFi name
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"; // Replace with your WiFi password
+const char* WIFI_SSID = "Connecting...";        // Replace with your WiFi name
+const char* WIFI_PASSWORD = "asustuf123"; // Replace with your WiFi password
 
 // ===== Server Configuration =====
-const char* SERVER_HOST = "192.168.1.100";  // Replace with your server IP address
+const char* SERVER_HOST = "192.168.237.170";  // Replace with your server IP address
 const int SERVER_PORT = 3000;                // Server port (default: 3000)
 const char* WEBSOCKET_PATH = "/socket.io/?EIO=4&transport=websocket";
 
@@ -49,6 +49,8 @@ bool lastSensorState[3] = {HIGH, HIGH, HIGH};
 // WebSocket client
 WebSocketsClient webSocket;
 bool isConnected = false;
+unsigned long lastPingTime = 0;
+const unsigned long PING_INTERVAL = 25000;  // 25 seconds (from server config)
 
 void setup() {
   // Initialize serial for debugging
@@ -80,6 +82,12 @@ void setup() {
 void loop() {
   // Maintain WebSocket connection
   webSocket.loop();
+  
+  // Send periodic ping to keep connection alive
+  if (isConnected && (millis() - lastPingTime > PING_INTERVAL)) {
+    webSocket.sendTXT("2");  // Socket.IO ping message
+    lastPingTime = millis();
+  }
   
   // Reconnect WiFi if disconnected
   if (WiFi.status() != WL_CONNECTED) {
@@ -155,20 +163,54 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
       
     case WStype_CONNECTED:
-      Serial.println("[WebSocket] Connected to server!");
-      isConnected = true;
-      blinkLED(3);  // Connection success
-      
-      // Send initial connection message
-      webSocket.sendTXT("42[\"esp32Connected\",{\"device\":\"ESP32_F1_Sensors\"}]");
+      {
+        Serial.println("[WebSocket] Connected to server!");
+        Serial.printf("[WebSocket] Connected to URL: %s\n", payload);
+        isConnected = true;
+        lastPingTime = millis();
+        blinkLED(3);  // Connection success
+      }
       break;
       
     case WStype_TEXT:
-      Serial.printf("[WebSocket] Received: %s\n", payload);
+      {
+        String message = String((char*)payload);
+        Serial.printf("[WebSocket] Received: %s\n", payload);
+        
+        // Handle Socket.IO handshake (message starting with '0')
+        if (message.startsWith("0")) {
+          Serial.println("[WebSocket] Socket.IO handshake received");
+          // Send connect message after handshake
+          webSocket.sendTXT("40");  // Socket.IO connect on default namespace
+          delay(100);
+          // Send ESP32 identification
+          webSocket.sendTXT("42[\"esp32Connected\",{\"device\":\"ESP32_F1_Sensors\"}]");
+        }
+        // Handle ping from server (message '2')
+        else if (message.equals("2")) {
+          webSocket.sendTXT("3");  // Respond with pong
+        }
+        // Handle Socket.IO messages starting with '42'
+        else if (message.startsWith("42")) {
+          Serial.println("[WebSocket] Received Socket.IO event");
+        }
+      }
+      break;
+      
+    case WStype_BIN:
+      Serial.printf("[WebSocket] Binary data received, length: %u\n", length);
       break;
       
     case WStype_ERROR:
-      Serial.println("[WebSocket] Error!");
+      Serial.printf("[WebSocket] Error: %s\n", payload);
+      break;
+      
+    case WStype_PING:
+      Serial.println("[WebSocket] Ping received");
+      break;
+      
+    case WStype_PONG:
+      Serial.println("[WebSocket] Pong received");
       break;
   }
 }
