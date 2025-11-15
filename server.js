@@ -1,12 +1,15 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { SerialPort } from 'serialport';
-import { ReadlineParser } from '@serialport/parser-readline';
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",  // Allow ESP32 connections
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(express.static('public'));
 app.use(express.json());
@@ -45,28 +48,6 @@ let globalBest = {
   sector3: null,
   lap: null
 };
-
-// Serial port configuration (adjust COM port as needed)
-let serialPort = null;
-let parser = null;
-
-function initSerialPort(portName = 'COM3') {
-  try {
-    serialPort = new SerialPort({ path: portName, baudRate: 115200 });
-    parser = serialPort.pipe(new ReadlineParser({ delimiter: '\r\n' }));
-    
-    parser.on('data', handleSensorData);
-    
-    serialPort.on('error', (err) => {
-      console.log('Serial port error:', err.message);
-    });
-    
-    console.log(`Serial port ${portName} opened successfully`);
-  } catch (err) {
-    console.log('Could not open serial port:', err.message);
-    console.log('Running in demo mode without serial connection');
-  }
-}
 
 function handleSensorData(data) {
   const timestamp = Date.now();
@@ -325,7 +306,7 @@ app.post('/api/demo-trigger', (req, res) => {
 
 // WebSocket connection
 io.on('connection', (socket) => {
-  console.log('Client connected');
+  console.log('Client connected:', socket.id);
   
   socket.emit('initialData', {
     teams,
@@ -335,8 +316,20 @@ io.on('connection', (socket) => {
     globalBest
   });
   
+  // Handle ESP32 connection
+  socket.on('esp32Connected', (data) => {
+    console.log('ESP32 device connected:', data);
+    socket.emit('esp32Acknowledged', { status: 'connected' });
+  });
+  
+  // Handle sensor triggers from ESP32
+  socket.on('sensorTrigger', (data) => {
+    console.log('Sensor trigger from ESP32:', data.sensor);
+    handleSensorData(data.sensor);
+  });
+  
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
+    console.log('Client disconnected:', socket.id);
   });
 });
 
@@ -344,8 +337,6 @@ const PORT = process.env.PORT || 3000;
 
 httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  // Attempt to connect to serial port
-  // Change COM3 to your Arduino/ESP32 port
-  // initSerialPort('COM3');
-  console.log('Serial port disabled - use demo mode or uncomment initSerialPort()');
+  console.log('WebSocket server ready for ESP32 connections');
+  console.log('Use demo mode buttons for testing without hardware');
 });
