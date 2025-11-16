@@ -8,7 +8,12 @@ const io = new Server(httpServer, {
   cors: {
     origin: "*",  // Allow ESP32 connections
     methods: ["GET", "POST"]
-  }
+  },
+  pingTimeout: 60000,        // 60 seconds before considering connection dead
+  pingInterval: 25000,       // Send ping every 25 seconds
+  upgradeTimeout: 30000,     // 30 seconds for the connection upgrade
+  allowEIO3: true,           // Allow older Socket.IO clients
+  transports: ['websocket', 'polling']  // Support both WebSocket and polling
 });
 
 app.use(express.static('public'));
@@ -307,6 +312,7 @@ app.post('/api/demo-trigger', (req, res) => {
 // WebSocket connection
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+  console.log('Transport:', socket.conn.transport.name);
   
   socket.emit('initialData', {
     teams,
@@ -328,9 +334,23 @@ io.on('connection', (socket) => {
     handleSensorData(data.sensor);
   });
   
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+  // Handle connection errors
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
   });
+  
+  socket.on('disconnect', (reason) => {
+    console.log('Client disconnected:', socket.id, 'Reason:', reason);
+  });
+  
+  socket.on('connect_error', (error) => {
+    console.error('Connection error:', error);
+  });
+});
+
+// Handle Socket.IO server events
+io.engine.on('connection_error', (err) => {
+  console.error('Connection error:', err.req, err.code, err.message, err.context);
 });
 
 const PORT = process.env.PORT || 3000;
@@ -339,4 +359,8 @@ httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log('WebSocket server ready for ESP32 connections');
   console.log('Use demo mode buttons for testing without hardware');
+  console.log('\nSocket.IO Configuration:');
+  console.log('- Ping Interval: 25 seconds');
+  console.log('- Ping Timeout: 60 seconds');
+  console.log('- Transports: WebSocket, Polling');
 });

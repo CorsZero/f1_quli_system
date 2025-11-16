@@ -7,11 +7,13 @@
  * - 3 IR Sensors (for Start/Finish line and 2 sector lines)
  * 
  * IR Sensor Connections:
- * - Sensor 1 (Start/Finish): GPIO 13
- * - Sensor 2 (Sector 1):      GPIO 12
- * - Sensor 3 (Sector 2):      GPIO 14
+ * - Sensor 1 (Start/Finish): GPIO 25
+ * - Sensor 2 (Sector 1):      GPIO 26
+ * - Sensor 3 (Sector 2):      GPIO 27
  * - VCC: 3.3V or 5V (depending on sensor)
  * - GND: GND
+ * 
+ * NOTE: Avoid GPIO 12, 0, 2, 15 - they affect boot mode!
  * 
  * Communication:
  * - Connects to WiFi network
@@ -23,28 +25,32 @@
 #include <WebSocketsClient.h>
 
 // ===== WiFi Configuration =====
-const char* WIFI_SSID = "Connecting...";        // Replace with your WiFi name
-const char* WIFI_PASSWORD = "asustuf123"; // Replace with your WiFi password
+const char* WIFI_SSID = "ASUS 7704";        // Replace with your WiFi name
+const char* WIFI_PASSWORD = "janindup"; // Replace with your WiFi password
 
 // ===== Server Configuration =====
-const char* SERVER_HOST = "192.168.237.170";  // Replace with your server IP address
+const char* SERVER_HOST = "192.168.137.212";  // Replace with your server IP address
 const int SERVER_PORT = 3000;                // Server port (default: 3000)
 const char* WEBSOCKET_PATH = "/socket.io/?EIO=4&transport=websocket";
 
 // Pin definitions
-const int SENSOR_START_FINISH = 13;  // Start/Finish line sensor
-const int SENSOR_SECTOR_1 = 12;      // Sector 1 completion sensor
-const int SENSOR_SECTOR_2 = 14;      // Sector 2 completion sensor
+const int SENSOR_START_FINISH = 25;  // Start/Finish line sensor (was 13)
+const int SENSOR_SECTOR_1 = 26;      // Sector 1 completion sensor (was 12)
+const int SENSOR_SECTOR_2 = 27;      // Sector 2 completion sensor (was 14)
 
 // LED indicator
 const int LED_PIN = 2;  // ESP32 built-in LED
 
 // Debounce settings
 unsigned long lastTriggerTime[3] = {0, 0, 0};
-const unsigned long DEBOUNCE_DELAY = 1000;  // 1 second debounce
+const unsigned long DEBOUNCE_DELAY = 500;  // 500ms debounce (reduced from 1000ms)
 
 // Sensor states
 bool lastSensorState[3] = {HIGH, HIGH, HIGH};
+
+// WiFi reconnection
+unsigned long lastWiFiCheck = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 5000;  // Check WiFi every 5 seconds
 
 // WebSocket client
 WebSocketsClient webSocket;
@@ -80,29 +86,26 @@ void setup() {
 }
 
 void loop() {
-  // Maintain WebSocket connection
-  webSocket.loop();
-  
-  // Send periodic ping to keep connection alive
-  if (isConnected && (millis() - lastPingTime > PING_INTERVAL)) {
-    webSocket.sendTXT("2");  // Socket.IO ping message
-    lastPingTime = millis();
-  }
-  
-  // Reconnect WiFi if disconnected
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi disconnected! Reconnecting...");
-    connectWiFi();
-  }
-  
   unsigned long currentTime = millis();
   
-  // Check all sensors
+  // Check all sensors FIRST - highest priority for minimum latency
   checkSensor(0, SENSOR_START_FINISH, "S1", currentTime);
   checkSensor(1, SENSOR_SECTOR_1, "S2", currentTime);
   checkSensor(2, SENSOR_SECTOR_2, "S3", currentTime);
   
-  delay(5);  // 5ms polling rate
+  // Maintain WebSocket connection (non-blocking)
+  webSocket.loop();
+  
+  // Check WiFi only every 5 seconds (not every loop)
+  if (currentTime - lastWiFiCheck > WIFI_CHECK_INTERVAL) {
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi disconnected! Reconnecting...");
+      connectWiFi();
+    }
+    lastWiFiCheck = currentTime;
+  }
+  
+  // No delay - maximum responsiveness!
 }
 
 // WiFi connection function
@@ -177,18 +180,18 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         String message = String((char*)payload);
         Serial.printf("[WebSocket] Received: %s\n", payload);
         
+        // Handle ping from server (message '2') - MUST respond or connection dies!
+        if (message.equals("2")) {
+          webSocket.sendTXT("3");  // Respond with pong
+          Serial.println("[WebSocket] Ping received, pong sent");
+        }
         // Handle Socket.IO handshake (message starting with '0')
-        if (message.startsWith("0")) {
+        else if (message.startsWith("0")) {
           Serial.println("[WebSocket] Socket.IO handshake received");
           // Send connect message after handshake
           webSocket.sendTXT("40");  // Socket.IO connect on default namespace
-          delay(100);
-          // Send ESP32 identification
+          // Send ESP32 identification (removed delay - not needed)
           webSocket.sendTXT("42[\"esp32Connected\",{\"device\":\"ESP32_F1_Sensors\"}]");
-        }
-        // Handle ping from server (message '2')
-        else if (message.equals("2")) {
-          webSocket.sendTXT("3");  // Respond with pong
         }
         // Handle Socket.IO messages starting with '42'
         else if (message.startsWith("42")) {
@@ -239,16 +242,19 @@ void checkSensor(int sensorIndex, int sensorPin, const char* message, unsigned l
   if (currentState == LOW && lastSensorState[sensorIndex] == HIGH) {
     if (currentTime - lastTriggerTime[sensorIndex] > DEBOUNCE_DELAY) {
       
-      // Send to server via WebSocket
+      // Send to server IMMEDIATELY - no delays!
       sendSensorData(message);
       
-      // Visual feedback
+      // Quick LED flash (non-blocking - just turn on, will turn off next loop)
       digitalWrite(LED_PIN, HIGH);
-      delay(50);
-      digitalWrite(LED_PIN, LOW);
       
       lastTriggerTime[sensorIndex] = currentTime;
     }
+  }
+  
+  // Turn off LED after brief moment (non-blocking)
+  if (currentTime - lastTriggerTime[sensorIndex] > 50) {
+    digitalWrite(LED_PIN, LOW);
   }
   
   lastSensorState[sensorIndex] = currentState;
