@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+README_SETUP.md
+esp_code
+UPLOAD_TROUBLESHOOTING.md
+.env
