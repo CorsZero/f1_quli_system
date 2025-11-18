@@ -1,0 +1,50 @@
+MEDIA SETUP INSTRUCTIONS
+========================
+
+The webpage requires the following media files in the public folder:
+
+1. F1 VIDEO (Hero Section)
+   - Named: f1video.webm
+   - Location: public/f1video.webm
+   - Format: WebM video
+   - Purpose: Background video in hero section
+
+2. F1 AUDIO (Background Sound)
+   - Named: f1audio.mp3 (or f1audio.webm, f1audio.ogg)
+   - Location: public/f1audio.mp3
+   - Format: MP3, WebM, or OGG audio
+   - Purpose: Background ambient audio for the webpage
+   
+3. F1 NOTIFICATION SOUND
+   - Named: f1notification.mp3 (or f1notification.webm, f1notification.ogg)
+   - Location: public/f1notification.mp3
+   - Format: MP3, WebM, or OGG audio
+   - Purpose: Notification sound for events (team change, driver change, leaderboard update)
+
+4. CHECKPOINT SOUND
+   - Named: checkpoint.mp3 (or checkpoint.webm, checkpoint.ogg)
+   - Location: public/checkpoint.mp3
+   - Format: MP3, WebM, or OGG audio
+   - Purpose: Plays when passing through sector checkpoints and demo triggers
+
+5. HERO BACKGROUND IMAGE
+   - Named: hero.jpg
+   - Location: public/hero.jpg
+   - Format: JPEG
+   - Purpose: Faded background image for the container section
+
+Audio Behavior:
+- Background audio plays continuously in ambient mode
+- Notification sound plays when:
+  * Changing team selection
+  * Changing driver selection
+  * Leaderboard updates
+- Background audio automatically mutes when session starts
+- Background audio automatically unmutes when session ends
+- Speaker button in top-right controls manual mute/unmute
+- Audio starts muted by default due to browser autoplay policies
+- First click anywhere on the page will attempt to start the audio
+
+Once you add these files, all media features will work automatically.
+
+

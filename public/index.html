@@ -7,9 +7,49 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Background Audio -->
+    <audio id="bgAudio" loop>
+        <source src="f1audio.mp3" type="audio/mpeg">
+        <source src="f1audio.webm" type="audio/webm">
+        <source src="f1audio.ogg" type="audio/ogg">
+    </audio>
+
+    <!-- Notification Sound -->
+    <audio id="notificationSound" preload="auto">
+        <source src="f1notification.mp3" type="audio/mpeg">
+        <source src="f1notification.webm" type="audio/webm">
+        <source src="f1notification.ogg" type="audio/ogg">
+    </audio>
+
+    <!-- Checkpoint Sound -->
+    <audio id="checkpointSound" preload="auto">
+        <source src="checkpoint.mp3" type="audio/mpeg">
+        <source src="checkpoint.webm" type="audio/webm">
+        <source src="checkpoint.ogg" type="audio/ogg">
+    </audio>
+
+    <!-- Audio Control Button -->
+    <button id="audioToggle" class="audio-toggle" title="Toggle Audio">
+        🔇
+    </button>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <video class="hero-video" autoplay loop muted playsinline>
+            <source src="f1video.webm" type="video/webm">
+            Your browser does not support the video tag.
+        </video>
+        <div class="hero-overlay">
+            <!-- <div class="hero-content">
+                <h1 class="hero-title">FORMULA 1</h1>
+                <p class="hero-subtitle">Qatar Grand Prix 2025 - Live Qualifying</p>
+            </div> -->
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
-        <header class="header">
+        <!-- <header class="header">
             <div class="logo">
                 <h1>FORMULA 1</h1>
                 <span class="session-name">QUALIFYING</span>
@@ -18,7 +58,7 @@
                 <span class="live-dot"></span>
                 <span>LIVE</span>
             </div>
-        </header>
+        </header> -->
 
         <!-- Race Control Panel -->
         <div class="race-control">
@@ -69,6 +109,7 @@
         <!-- Leaderboard -->
         <div class="leaderboard-section">
             <h2>LEADERBOARD</h2>
+            <button class="fullscreen-toggle" id="fullscreenBtn">⛶ VIEW FULLSCREEN</button>
             <div class="leaderboard-header">
                 <div class="pos">POS</div>
                 <div class="driver-info">DRIVER</div>
@@ -85,6 +126,45 @@
 
         <!-- Legend -->
         <div class="legend">
+            <div class="legend-item">
+                <span class="legend-color purple"></span>
+                <span>Overall Best</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color green"></span>
+                <span>Personal Best</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color yellow"></span>
+                <span>Slower</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Leaderboard -->
+    <div id="fullscreenContainer" class="fullscreen-container">
+        <div class="fullscreen-header">
+            <div>
+                <h1 style="font-size: 2em; letter-spacing: 5px;">FORMULA 1 LEADERBOARD</h1>
+                <span style="font-size: 1em; letter-spacing: 2px; color: rgba(255,255,255,0.7);">LIVE QUALIFYING</span>
+            </div>
+            <button class="fullscreen-close" id="fullscreenCloseBtn">✕ CLOSE</button>
+        </div>
+        <div class="leaderboard-section" style="background: transparent; border: none;">
+            <div class="leaderboard-header">
+                <div class="pos">POS</div>
+                <div class="driver-info">DRIVER</div>
+                <div class="sector">S1</div>
+                <div class="sector">S2</div>
+                <div class="sector">S3</div>
+                <div class="time">TIME</div>
+                <div class="laps">LAPS</div>
+            </div>
+            <div id="leaderboardFullscreen" class="leaderboard-body">
+                <div class="no-data">No lap times recorded yet</div>
+            </div>
+        </div>
+        <div class="legend" style="margin-top: 30px;">
             <div class="legend-item">
                 <span class="legend-color purple"></span>
                 <span>Overall Best</span>

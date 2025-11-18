@@ -24,8 +24,81 @@ const stopBtn = document.getElementById('stopBtn');
 const currentSession = document.getElementById('currentSession');
 const currentLapDisplay = document.getElementById('currentLapDisplay');
 const leaderboard = document.getElementById('leaderboard');
+const leaderboardFullscreen = document.getElementById('leaderboardFullscreen');
 const liveTimer = document.getElementById('liveTimer');
 const liveTimerDisplay = document.getElementById('liveTimerDisplay');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const fullscreenCloseBtn = document.getElementById('fullscreenCloseBtn');
+const fullscreenContainer = document.getElementById('fullscreenContainer');
+const bgAudio = document.getElementById('bgAudio');
+const audioToggle = document.getElementById('audioToggle');
+const notificationSound = document.getElementById('notificationSound');
+const checkpointSound = document.getElementById('checkpointSound');
+
+// Audio control
+let isAudioMuted = false;
+let isSessionActive = false;
+
+// Set initial audio button state
+audioToggle.textContent = '🔊';
+
+// Play notification sound
+function playNotification() {
+    notificationSound.currentTime = 0;
+    notificationSound.play().catch(e => console.log('Notification play failed:', e));
+}
+
+// Play checkpoint sound
+function playCheckpoint() {
+    checkpointSound.currentTime = 0;
+    checkpointSound.play().catch(e => console.log('Checkpoint play failed:', e));
+}
+
+// Attempt to start audio on page load
+window.addEventListener('load', () => {
+    bgAudio.play().catch(e => {
+        console.log('Autoplay prevented, waiting for user interaction:', e);
+    });
+});
+
+// Try to play audio on any user interaction
+document.addEventListener('click', () => {
+    if (bgAudio.paused) {
+        bgAudio.play().catch(e => console.log('Audio play failed:', e));
+    }
+}, { once: true });
+
+audioToggle.addEventListener('click', () => {
+    isAudioMuted = !isAudioMuted;
+    
+    // Only control background audio if session is not active
+    if (!isSessionActive) {
+        bgAudio.muted = isAudioMuted;
+    }
+    
+    audioToggle.textContent = isAudioMuted ? '🔇' : '🔊';
+    
+    if (!isAudioMuted && bgAudio.paused && !isSessionActive) {
+        bgAudio.play().catch(e => console.log('Audio play failed:', e));
+    }
+});
+
+// Fullscreen toggle
+fullscreenBtn.addEventListener('click', () => {
+    fullscreenContainer.classList.add('active');
+    updateFullscreenLeaderboard();
+});
+
+fullscreenCloseBtn.addEventListener('click', () => {
+    fullscreenContainer.classList.remove('active');
+});
+
+// Close fullscreen with ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && fullscreenContainer.classList.contains('active')) {
+        fullscreenContainer.classList.remove('active');
+    }
+});
 
 // Initialize
 socket.on('initialData', (data) => {
@@ -58,6 +131,7 @@ teamSelect.addEventListener('change', (e) => {
     driverSelect.innerHTML = '<option value="">Select Driver</option>';
     
     if (team && teams[team]) {
+        playNotification(); // Play notification when team changes
         teams[team].drivers.forEach(driver => {
             const option = document.createElement('option');
             option.value = driver;
@@ -73,6 +147,9 @@ teamSelect.addEventListener('change', (e) => {
 
 driverSelect.addEventListener('change', (e) => {
     startBtn.disabled = !e.target.value;
+    if (e.target.value) {
+        playNotification(); // Play notification when driver changes
+    }
 });
 
 startBtn.addEventListener('click', async () => {
@@ -92,6 +169,11 @@ startBtn.addEventListener('click', async () => {
         if (data.success) {
             currentDriver = driver;
             currentTeam = team;
+            isSessionActive = true;
+            
+            // Mute background audio when session starts
+            bgAudio.muted = true;
+            
             updateSessionDisplay();
         }
     } catch (error) {
@@ -111,6 +193,13 @@ stopBtn.addEventListener('click', async () => {
         if (data.success) {
             currentDriver = null;
             currentTeam = null;
+            isSessionActive = false;
+            
+            // Unmute background audio when session stops (if user had it unmuted)
+            if (!isAudioMuted) {
+                bgAudio.muted = false;
+            }
+            
             updateSessionDisplay();
         }
     } catch (error) {
@@ -215,12 +304,24 @@ function formatTime(milliseconds) {
 socket.on('sessionStarted', (data) => {
     currentDriver = data.driver;
     currentTeam = data.team;
+    isSessionActive = true;
+    
+    // Mute background audio when session starts
+    bgAudio.muted = true;
+    
     updateSessionDisplay();
 });
 
 socket.on('sessionStopped', () => {
     currentDriver = null;
     currentTeam = null;
+    isSessionActive = false;
+    
+    // Unmute background audio when session stops (if user had it unmuted)
+    if (!isAudioMuted) {
+        bgAudio.muted = false;
+    }
+    
     stopTimer();
     updateSessionDisplay();
 });
@@ -234,6 +335,9 @@ socket.on('lapStarted', (data) => {
 
 socket.on('sectorComplete', (data) => {
     console.log('Sector complete', data);
+    
+    // Play checkpoint sound
+    playCheckpoint();
     
     const sectorNum = data.sector;
     const timeElement = document.getElementById(`sector${sectorNum}Time`);
@@ -269,9 +373,13 @@ let previousLeaderboard = [];
 function updateLeaderboardWithAnimation(data) {
     if (!data || data.length === 0) {
         leaderboard.innerHTML = '<div class="no-data">No lap times recorded yet</div>';
+        leaderboardFullscreen.innerHTML = '<div class="no-data">No lap times recorded yet</div>';
         previousLeaderboard = [];
         return;
     }
+    
+    // Play notification sound on leaderboard update
+    playNotification();
     
     // Create a map of previous positions
     const previousPositions = {};
@@ -302,6 +410,7 @@ function updateLeaderboardWithAnimation(data) {
         // Then update the leaderboard
         setTimeout(() => {
             renderLeaderboard(data);
+            updateFullscreenLeaderboard();
             
             // Remove animation class after render
             setTimeout(() => {
@@ -313,13 +422,14 @@ function updateLeaderboardWithAnimation(data) {
         }, 300);
     } else {
         renderLeaderboard(data);
+        updateFullscreenLeaderboard();
     }
     
     previousLeaderboard = [...data];
 }
 
 function renderLeaderboard(data) {
-    leaderboard.innerHTML = data.map((entry, index) => {
+    const html = data.map((entry, index) => {
         const position = index + 1;
         const positionClass = position <= 3 ? `position-${position}` : '';
         const teamColor = teams[entry.team]?.color || '#fff';
@@ -354,6 +464,12 @@ function renderLeaderboard(data) {
             </div>
         `;
     }).join('');
+    
+    leaderboard.innerHTML = html;
+}
+
+function updateFullscreenLeaderboard() {
+    leaderboardFullscreen.innerHTML = leaderboard.innerHTML;
 }
 
 function updateLeaderboard(data) {
@@ -368,6 +484,8 @@ async function triggerSensor(sensor) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sensor })
         });
+        // Play checkpoint sound when triggering sensors in demo mode
+        playCheckpoint();
     } catch (error) {
         console.error('Error triggering sensor:', error);
     }
