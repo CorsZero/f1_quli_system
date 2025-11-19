@@ -25,12 +25,12 @@
 #include <WebSocketsClient.h>
 
 // ===== WiFi Configuration =====
-const char* WIFI_SSID = "ASUS 7704";        // Replace with your WiFi name
-const char* WIFI_PASSWORD = "janindup"; // Replace with your WiFi password
+const char* WIFI_SSID = "Imandi’s iphone";        // Replace with your WiFi name
+const char* WIFI_PASSWORD = "12345678i"; // Replace with your WiFi password
 
 // ===== Server Configuration =====
-const char* SERVER_HOST = "192.168.137.212";  // Replace with your server IP address
-const int SERVER_PORT = 3000;                // Server port (default: 3000)
+const char* SERVER_HOST = "f1-quali-system.onrender.com";  // Render.com domain (no https://)
+const int SERVER_PORT = 443;                 // Port 443 for HTTPS/WSS
 const char* WEBSOCKET_PATH = "/socket.io/?EIO=4&transport=websocket";
 
 // Pin definitions
@@ -142,8 +142,8 @@ void connectWiFi() {
 void setupWebSocket() {
   Serial.println("Setting up WebSocket connection...");
   
-  // Configure WebSocket
-  webSocket.begin(SERVER_HOST, SERVER_PORT, WEBSOCKET_PATH);
+  // Configure WebSocket with SSL for Render.com
+  webSocket.beginSSL(SERVER_HOST, SERVER_PORT, WEBSOCKET_PATH);
   
   // Event handler
   webSocket.onEvent(webSocketEvent);
